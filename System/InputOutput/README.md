@@ -21,11 +21,12 @@ cmake -S . -B build
 cmake --build build -j
 ```
 
-会生成可执行程序：`build/System/InputOutput/segy_to_sep`
+会生成可执行程序：`bin/segy_to_sep`  
+静态库会生成在：`lib/libseismic_io.a`
 
 ## 转换命令
 ```bash
-build/System/InputOutput/segy_to_sep input.segy output.H output.@
+bin/segy_to_sep input.segy output.H output.@
 ```
 
 ## 推荐内部落盘格式
