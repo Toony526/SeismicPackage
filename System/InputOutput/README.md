@@ -3,8 +3,15 @@
 ## 新增 SEG-Y 数据接口
 - `segy_data_interface.h/.cpp` 提供 `SegyDataInterface`：
   - 读取 SEG-Y 二进制头（采样间隔、每道采样点数、数据格式）。
-  - 读取全部道数据（当前支持 SEG-Y format=5，即 IEEE 浮点）。
+  - 读取全部道数据（支持 SEG-Y format=1/2/3/5/8）。
   - 将读取结果直接写出为 SEP 文件对（`.H` + `.@`）。
+
+### 当前支持的 SEG-Y 样本格式
+- format 1: IBM 4-byte floating point
+- format 2: 4-byte two's complement integer
+- format 3: 2-byte two's complement integer
+- format 5: 4-byte IEEE floating point
+- format 8: 1-byte two's complement integer
 
 ## CMake 管理
 从仓库根目录构建：

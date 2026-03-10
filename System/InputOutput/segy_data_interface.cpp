@@ -44,6 +44,44 @@ float be_u32_to_ieee_float(std::uint32_t value)
     converter.i = value;
     return converter.f;
 }
+
+std::int16_t be_u16_to_i16(std::uint16_t value)
+{
+    return static_cast<std::int16_t>(value);
+}
+
+std::int32_t be_u32_to_i32(std::uint32_t value)
+{
+    return static_cast<std::int32_t>(value);
+}
+
+float ibm_to_ieee_float(std::uint32_t ibm)
+{
+    if (ibm == 0)
+    {
+        return 0.0f;
+    }
+
+    const int sign = (ibm & 0x80000000u) ? -1 : 1;
+    int exponent = static_cast<int>((ibm >> 24) & 0x7fu) - 64;
+    std::uint32_t fraction = ibm & 0x00ffffffu;
+
+    double mantissa = static_cast<double>(fraction) / static_cast<double>(0x01000000u);
+    double value = sign * mantissa;
+
+    while (exponent > 0)
+    {
+        value *= 16.0;
+        --exponent;
+    }
+    while (exponent < 0)
+    {
+        value /= 16.0;
+        ++exponent;
+    }
+
+    return static_cast<float>(value);
+}
 } // namespace
 
 SegyDataInterface::SegyDataInterface(const std::string &file_path)
@@ -66,10 +104,18 @@ std::size_t SegyDataInterface::bytes_per_sample() const
 {
     switch (binary_header_.data_sample_format)
     {
+    case 1:
+        return 4; // IBM float
+    case 2:
+        return 4; // int32
+    case 3:
+        return 2; // int16
     case 5:
         return 4; // IEEE float
+    case 8:
+        return 1; // int8
     default:
-        throw std::runtime_error("unsupported SEG-Y sample format; currently only format 5 (IEEE float) is supported");
+        throw std::runtime_error("unsupported SEG-Y sample format; supported formats: 1(IBM float), 2(int32), 3(int16), 5(IEEE float), 8(int8)");
     }
 }
 
@@ -124,8 +170,48 @@ std::vector<float> SegyDataInterface::read_all_traces() const
         input.seekg(240, std::ios::cur); // skip trace header
         for (std::size_t sample = 0; sample < samples_per_trace; ++sample)
         {
-            const std::uint32_t be_val = read_be_u32(input);
-            output[trace * samples_per_trace + sample] = be_u32_to_ieee_float(be_val);
+            float sample_value = 0.0f;
+            switch (binary_header_.data_sample_format)
+            {
+            case 1:
+            {
+                const std::uint32_t be_val = read_be_u32(input);
+                sample_value = ibm_to_ieee_float(be_val);
+                break;
+            }
+            case 2:
+            {
+                const std::uint32_t be_val = read_be_u32(input);
+                sample_value = static_cast<float>(be_u32_to_i32(be_val));
+                break;
+            }
+            case 3:
+            {
+                const std::uint16_t be_val = read_be_u16(input);
+                sample_value = static_cast<float>(be_u16_to_i16(be_val));
+                break;
+            }
+            case 5:
+            {
+                const std::uint32_t be_val = read_be_u32(input);
+                sample_value = be_u32_to_ieee_float(be_val);
+                break;
+            }
+            case 8:
+            {
+                signed char sample_i8 = 0;
+                input.read(reinterpret_cast<char *>(&sample_i8), 1);
+                if (!input)
+                {
+                    throw std::runtime_error("failed to read int8 from segy");
+                }
+                sample_value = static_cast<float>(sample_i8);
+                break;
+            }
+            default:
+                throw std::runtime_error("unsupported SEG-Y sample format while reading trace data");
+            }
+            output[trace * samples_per_trace + sample] = sample_value;
         }
     }
 
