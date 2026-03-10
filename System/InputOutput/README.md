@@ -4,6 +4,7 @@
 - `segy_data_interface.h/.cpp` 提供 `SegyDataInterface`：
   - 读取 SEG-Y 二进制头（采样间隔、每道采样点数、数据格式）。
   - 支持 SEG-Y 样本格式 `1/2/3/5/8`。
+  - 当 binary header 的采样点数/采样间隔为 0 时，会自动回退读取首道 trace header 字段。
   - 按块（chunk）读取+转换+写出到 SEP，避免全量一次性内存占用。
   - 支持块内多线程解码（`decode_threads`）。
 

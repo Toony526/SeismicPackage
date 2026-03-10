@@ -50,6 +50,35 @@ std::uint32_t read_be_u32_from_ptr(unsigned char const *ptr)
             static_cast<std::uint32_t>(ptr[3]);
 }
 
+
+void parse_trace_header_fallback(std::ifstream &input,
+                                 std::uint16_t &sample_interval_us,
+                                 std::uint16_t &num_samples_per_trace)
+{
+    std::streamoff const trace_header_offset = 3600;
+    input.seekg(trace_header_offset, std::ios::beg);
+    unsigned char trace_header[240] = {0};
+    input.read(reinterpret_cast<char *>(trace_header), 240);
+    if (!input)
+    {
+        throw std::runtime_error("failed to read SEG-Y first trace header for fallback fields");
+    }
+
+    // Follow existing project convention from legacy segy_reader.h:
+    // bytes 114-115: sample interval, bytes 116-117: samples per trace (big endian)
+    std::uint16_t trace_sample_interval = static_cast<std::uint16_t>((static_cast<std::uint16_t>(trace_header[114]) << 8) | static_cast<std::uint16_t>(trace_header[115]));
+    std::uint16_t trace_num_samples = static_cast<std::uint16_t>((static_cast<std::uint16_t>(trace_header[116]) << 8) | static_cast<std::uint16_t>(trace_header[117]));
+
+    if (sample_interval_us == 0 && trace_sample_interval > 0)
+    {
+        sample_interval_us = trace_sample_interval;
+    }
+    if (num_samples_per_trace == 0 && trace_num_samples > 0)
+    {
+        num_samples_per_trace = trace_num_samples;
+    }
+}
+
 float be_u32_to_ieee_float(std::uint32_t value)
 {
     union
@@ -232,6 +261,18 @@ void SegyDataInterface::parse_headers()
 
     input.seekg(3200 + 24, std::ios::beg);
     binary_header_.data_sample_format = read_be_u16(input);
+
+    if (binary_header_.num_samples_per_trace == 0 || binary_header_.sample_interval_us == 0)
+    {
+        parse_trace_header_fallback(input,
+                                    binary_header_.sample_interval_us,
+                                    binary_header_.num_samples_per_trace);
+    }
+
+    if (binary_header_.num_samples_per_trace == 0)
+    {
+        throw std::runtime_error("SEG-Y num_samples_per_trace is zero in both binary and trace header");
+    }
 
     input.seekg(0, std::ios::end);
     const std::streamoff file_size = input.tellg();
