@@ -16,3 +16,6 @@ foreach(CONFIG_TYPE ${CMAKE_CONFIGURATION_TYPES})
 endforeach()
 
 add_subdirectory(System/InputOutput)
+
+add_subdirectory(SEPDataViewer)
+add_subdirectory(SEGYDataViewer)
