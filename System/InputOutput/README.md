@@ -41,6 +41,7 @@ bin/segy_sep_validate input.segy output.H
 1. 样点数（SEG-Y vs SEP `n1`）一致。
 2. 道数（SEG-Y vs SEP 总道数）一致。
 3. 样点逐点差异（`max_abs_diff`、`rmse`）。
+4. 非有限值统计（`non_finite_samples`）；若该值大于 0，程序会返回非 0 状态，提示不能判定为严格一致。
 
 ## 可视化查看道头与道数据
 - 道数据可视化：

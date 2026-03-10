@@ -1,4 +1,5 @@
 #include <cmath>
+#include <cstddef>
 #include <iostream>
 #include <stdexcept>
 #include <vector>
@@ -49,27 +50,61 @@ int main(int argc, char **argv)
 
         float max_abs_diff = 0.0f;
         double mse = 0.0;
+        std::size_t finite_count = 0;
+        std::size_t non_finite_count = 0;
 
         for (std::size_t i = 0; i < segy_data.size(); ++i)
         {
-            const float diff = std::fabs(segy_data[i] - sep_data[i]);
+            const float a = segy_data[i];
+            const float b = sep_data[i];
+
+            if (!std::isfinite(a) || !std::isfinite(b))
+            {
+                ++non_finite_count;
+                continue;
+            }
+
+            const float diff = std::fabs(a - b);
+            if (!std::isfinite(diff))
+            {
+                ++non_finite_count;
+                continue;
+            }
+
             if (diff > max_abs_diff)
             {
                 max_abs_diff = diff;
             }
             mse += static_cast<double>(diff) * static_cast<double>(diff);
+            ++finite_count;
         }
 
-        mse /= static_cast<double>(segy_data.size());
-        const double rmse = std::sqrt(mse);
+        if (finite_count == 0)
+        {
+            std::cerr << "validation failed: no finite samples available for RMSE calculation" << std::endl;
+            return 4;
+        }
 
-        std::cout << "Validation passed." << std::endl;
+        const double rmse = std::sqrt(mse / static_cast<double>(finite_count));
+
+        std::cout << "Validation finished." << std::endl;
         std::cout << "trace_count=" << segy.trace_count()
                   << " samples_per_trace=" << segy.binary_header().num_samples_per_trace
                   << " sample_interval_us=" << segy.binary_header().sample_interval_us
                   << std::endl;
-        std::cout << "max_abs_diff=" << max_abs_diff << " rmse=" << rmse << std::endl;
+        std::cout << "max_abs_diff=" << max_abs_diff
+                  << " rmse=" << rmse
+                  << " finite_samples=" << finite_count
+                  << " non_finite_samples=" << non_finite_count
+                  << std::endl;
 
+        if (non_finite_count > 0)
+        {
+            std::cerr << "validation warning: encountered non-finite samples; conversion cannot be treated as strictly identical" << std::endl;
+            return 5;
+        }
+
+        std::cout << "Validation passed." << std::endl;
         return 0;
     }
     catch (std::exception const &ex)
