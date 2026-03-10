@@ -24,3 +24,21 @@ target_link_libraries(segy_sep_validate
     PRIVATE
         seismic_io
 )
+
+add_executable(segy_data_inspect
+    segy_data_inspect.cpp
+)
+
+target_link_libraries(segy_data_inspect
+    PRIVATE
+        seismic_io
+)
+
+add_executable(sep_data_inspect
+    sep_data_inspect.cpp
+)
+
+target_link_libraries(sep_data_inspect
+    PRIVATE
+        seismic_io
+)
