@@ -15,3 +15,12 @@ target_link_libraries(segy_to_sep
     PRIVATE
         seismic_io
 )
+
+add_executable(segy_sep_validate
+    segy_sep_validate.cpp
+)
+
+target_link_libraries(segy_sep_validate
+    PRIVATE
+        seismic_io
+)

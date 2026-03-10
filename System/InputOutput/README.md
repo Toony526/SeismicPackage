@@ -22,12 +22,33 @@ cmake --build build -j
 ```
 
 会生成可执行程序：`bin/segy_to_sep`  
+会生成验证程序：`bin/segy_sep_validate`  
 静态库会生成在：`lib/libseismic_io.a`
 
 ## 转换命令
 ```bash
 bin/segy_to_sep input.segy output.H output.@
 ```
+
+## 转换正确性验证
+推荐在转换后执行：
+
+```bash
+bin/segy_sep_validate input.segy output.H
+```
+
+该工具会检查：
+1. 样点数（SEG-Y vs SEP `n1`）一致。
+2. 道数（SEG-Y vs SEP 总道数）一致。
+3. 样点逐点差异（`max_abs_diff`、`rmse`）。
+
+## 可视化查看道头与道数据
+- 道数据可视化：
+  - `SEPDataViewer` 可直接查看转换后的 `output.H` 数据体（灰度显示随时间滚动）。
+  - `SEGYDataViewer` 可用于原始 SEG-Y 的快速图形浏览。
+- 道头查看：
+  - `SEPReader` 可读取并打印 `n1..n8`、`hdr_label`、`sort_order` 等头信息（可在工具中按需输出）。
+  - SEG-Y 道头可在 `SEGYReader`/`SegyDataInterface` 基础上扩展输出关键字段（炮号、检波点号、CDP 等）。
 
 ## 推荐内部落盘格式
 建议在整个地震处理流程中统一使用 **SEP 格式（头文件 `.H` + 数据文件 `.@`）** 作为内部格式。
