@@ -23,7 +23,6 @@ cmake --build build -j
 
 会生成可执行程序：`bin/segy_to_sep`  
 会生成验证程序：`bin/segy_sep_validate`  
-会生成无图形依赖检查工具：`bin/segy_data_inspect`、`bin/sep_data_inspect`  
 静态库会生成在：`lib/libseismic_io.a`
 
 ## 转换命令
@@ -58,34 +57,3 @@ bin/segy_sep_validate input.segy output.H
 1. 仓库内现有多数处理模块依赖 `SEPReader/SEPWriter`。
 2. 处理链条衔接成本低，减少格式转换损耗。
 3. 头信息与数据体分离，便于批处理脚本组织。
-
-
-## 无 OpenGL 环境下的数据查看（推荐）
-当 `sep_data_viewer` / `segy_data_viewer` 出现 `libGL` / `freeglut` 上下文错误时，可改用命令行检查工具：
-
-```bash
-bin/segy_data_inspect input.segy 20
-bin/sep_data_inspect output.H 20
-```
-
-它们会输出：
-1. 关键头信息（道数、每道采样点、采样间隔、格式等）；
-2. 第一炮道（或第一道）的 min/max；
-3. 前 N 个样点值（用于与转换后结果做 spot check）。
-
-## OpenGL Viewer 报错排查
-若出现类似：
-- `No matching fbConfigs or visuals found`
-- `failed to load driver: swrast`
-- `Unable to create OpenGL 1.0 context`
-
-优先检查：
-1. 图形环境和 `DISPLAY` 是否可用；
-2. 是否安装了 Mesa/OpenGL/GLUT 运行时与驱动；
-3. 尝试软件渲染：
-
-```bash
-LIBGL_ALWAYS_SOFTWARE=1 MESA_LOADER_DRIVER_OVERRIDE=llvmpipe bin/sep_data_viewer output.H
-```
-
-若仍失败，建议先使用 `*_data_inspect` + `segy_sep_validate` 完成数据正确性核验。
