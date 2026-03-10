@@ -53,6 +53,8 @@ bin/segy_sep_validate input.segy output.header
 2. 道数（SEG-Y vs SEP 总道数）一致。
 3. 样点逐点差异（`max_abs_diff`、`rmse`）。
 4. 非有限值统计（`non_finite_samples`）；若该值大于 0，程序会返回非 0 状态。
+5. 对超大样点数采用分块读取校验，避免 `int` 溢出导致误判。
+6. 若 `max_abs_diff > 0`，会返回失败而不是误报通过。
 
 ## 可视化查看道头与道数据
 - 道数据可视化：

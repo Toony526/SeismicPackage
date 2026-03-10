@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <limits>
 #include <stdexcept>
 #include <thread>
 #include <vector>
@@ -402,10 +403,13 @@ void SegyDataInterface::write_as_sep(const std::string &sep_header_path,
     writer.OpenDataFile(sep_data_path.c_str());
     input.seekg(3600, std::ios::beg);
 
+    const std::size_t max_int = static_cast<std::size_t>(std::numeric_limits<int>::max());
+    const std::size_t max_traces_per_chunk_by_write_count = std::max<std::size_t>(1, max_int / samples_per_trace);
+
     std::size_t written_traces = 0;
     while (written_traces < trace_count_)
     {
-        const std::size_t traces_in_chunk = std::min(options.traces_per_chunk, trace_count_ - written_traces);
+        const std::size_t traces_in_chunk = std::min(std::min(options.traces_per_chunk, trace_count_ - written_traces), max_traces_per_chunk_by_write_count);
         std::vector<unsigned char> raw_block(traces_in_chunk * trace_size, 0);
         input.read(reinterpret_cast<char *>(raw_block.data()), static_cast<std::streamsize>(raw_block.size()));
         if (input.gcount() != static_cast<std::streamsize>(raw_block.size()))
@@ -422,6 +426,11 @@ void SegyDataInterface::write_as_sep(const std::string &sep_header_path,
                                     bytes_per_trace_sample,
                                     binary_header_.data_sample_format,
                                     options.decode_threads);
+
+        if (written_traces > max_int || out_chunk.size() > max_int)
+        {
+            throw std::runtime_error("conversion exceeds int-based SEP write limits; please reduce chunk size or split dataset");
+        }
 
         writer.write_sepval(out_chunk.data(),
                             0,

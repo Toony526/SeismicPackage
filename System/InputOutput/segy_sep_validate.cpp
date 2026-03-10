@@ -1,6 +1,7 @@
 #include <cmath>
 #include <cstddef>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <vector>
 
@@ -45,38 +46,62 @@ int main(int argc, char **argv)
             return 3;
         }
 
-        std::vector<float> sep_data(segy_data.size(), 0.0f);
-        sep.read_sepval(sep_data.data(), sep.o1, sep.o2, sep.o3, static_cast<int>(sep_data.size()));
+        const std::size_t total_samples = segy_data.size();
+        const std::size_t n1 = static_cast<std::size_t>(sep.n1);
+        const std::size_t n2 = static_cast<std::size_t>(sep.n2);
+        const std::size_t n1n2 = n1 * n2;
+        const std::size_t max_chunk = static_cast<std::size_t>(std::numeric_limits<int>::max());
 
         float max_abs_diff = 0.0f;
         double mse = 0.0;
         std::size_t finite_count = 0;
         std::size_t non_finite_count = 0;
 
-        for (std::size_t i = 0; i < segy_data.size(); ++i)
+        std::vector<float> sep_chunk;
+        std::size_t offset = 0;
+        while (offset < total_samples)
         {
-            const float a = segy_data[i];
-            const float b = sep_data[i];
+            const std::size_t chunk_size = std::min(max_chunk, total_samples - offset);
+            sep_chunk.assign(chunk_size, 0.0f);
 
-            if (!std::isfinite(a) || !std::isfinite(b))
+            const std::size_t linear = offset;
+            const int x = static_cast<int>(sep.o1 + (linear % n1));
+            const int y = static_cast<int>(sep.o2 + ((linear / n1) % n2));
+            const int o = static_cast<int>(sep.o3 + (linear / n1n2));
+
+            if (!sep.read_sepval(sep_chunk.data(), x, y, o, static_cast<int>(chunk_size)))
             {
-                ++non_finite_count;
-                continue;
+                std::cerr << "validation failed: unable to read SEP data chunk at offset=" << offset << std::endl;
+                return 6;
             }
 
-            const float diff = std::fabs(a - b);
-            if (!std::isfinite(diff))
+            for (std::size_t i = 0; i < chunk_size; ++i)
             {
-                ++non_finite_count;
-                continue;
+                const float a = segy_data[offset + i];
+                const float b = sep_chunk[i];
+
+                if (!std::isfinite(a) || !std::isfinite(b))
+                {
+                    ++non_finite_count;
+                    continue;
+                }
+
+                const float diff = std::fabs(a - b);
+                if (!std::isfinite(diff))
+                {
+                    ++non_finite_count;
+                    continue;
+                }
+
+                if (diff > max_abs_diff)
+                {
+                    max_abs_diff = diff;
+                }
+                mse += static_cast<double>(diff) * static_cast<double>(diff);
+                ++finite_count;
             }
 
-            if (diff > max_abs_diff)
-            {
-                max_abs_diff = diff;
-            }
-            mse += static_cast<double>(diff) * static_cast<double>(diff);
-            ++finite_count;
+            offset += chunk_size;
         }
 
         if (finite_count == 0)
@@ -102,6 +127,12 @@ int main(int argc, char **argv)
         {
             std::cerr << "validation warning: encountered non-finite samples; conversion cannot be treated as strictly identical" << std::endl;
             return 5;
+        }
+
+        if (max_abs_diff > 0.0f)
+        {
+            std::cerr << "validation failed: finite samples differ (max_abs_diff > 0)" << std::endl;
+            return 7;
         }
 
         std::cout << "Validation passed." << std::endl;
