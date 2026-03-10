@@ -11,7 +11,7 @@ int main(int argc, char **argv)
 {
     if (argc != 3)
     {
-        std::cerr << "usage: segy_sep_validate <input.segy> <output.H>" << std::endl;
+        std::cerr << "usage: segy_sep_validate <input.segy> <output.header>" << std::endl;
         return 1;
     }
 
